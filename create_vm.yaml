@@ -1,0 +1,49 @@
+---
+- name: Setup oVirt environment
+  hosts: rhevm
+
+  tasks:
+    - block:
+        - name: Include oVirt password
+          no_log: true
+          include_vars: vars.yaml
+
+        - name: Obtain SSO token
+          ovirt_auth:
+            url: "{{ engine_url }}"
+            username: "{{ username }}"
+            password: "{{ password }}"
+            ca_file: "{{ engine_cafile }}"
+
+
+        - name: Create VM from {{ template }}
+          ovirt_vms:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ vm_name }}"
+              template: "{{ template }}"
+              cluster: "{{ cluster }}"
+              memory: 1GiB
+              high_availability: true
+              #state: present
+              cloud_init:
+                nic_boot_protocol: static
+                nic_ip_address: "{{ ip }}"
+                nic_netmask: "{{ netmask }}"
+                nic_gateway: "{{ gateway }}"
+                nic_name: "{{ nic1 }}"
+                nic_on_boot: true
+                host_name: "{{ hostname }}"
+                custom_script: |
+                  write_files:
+                   - content: |
+                       Hello, world!
+                     path: /tmp/greeting.txt
+                     permissions: '0644'
+                user_name: root
+                root_password: 'admin123'
+
+      always:
+        - name: Revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"

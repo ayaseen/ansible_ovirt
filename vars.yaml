@@ -1,0 +1,14 @@
+---
+engine_url: https://rhevm.rhlabs.dev/ovirt-engine/api
+username: admin@internal
+password: 'admin'
+engine_cafile: /etc/pki/ovirt-engine/ca.pem
+datacenter: Data01
+cluster: CL01
+template: rhel7_tpl4_02
+ip: 192.168.1.20
+netmask: 255.255.255.0
+gateway: 192.168.1.1
+nic1: eth0
+hostname: test.rhlabs.dev
+vm_name: test.rhlabs.dev
