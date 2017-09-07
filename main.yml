@@ -1,0 +1,237 @@
+---
+# tasks file for provision
+
+## Ovirt Module Start ####
+    - block:
+        - name: Include oVirt password
+          no_log: true
+          include_vars: ../vars/main.yml
+
+        - name: Obtain SSO token
+          ovirt_auth:
+            url: "{{ engine_url }}"
+            username: "{{ username }}"
+            password: "{{ password }}"
+            ca_file: "{{ engine_cafile }}"
+
+## Start creating control node ##
+        - name: Create Control VM from {{ template }}
+          ovirt_vms:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item }}"
+              template: "{{ template }}"
+              cluster: "{{ cluster }}"
+              type: server
+              cpu_cores: 2
+              cpu_sockets: 2
+              memory: "{{ control_mem }}"
+              high_availability: true
+              operating_system: rhel_7x64
+              state: running
+
+              cloud_init:
+                host_name: "{{ item }}"
+                user_name: root
+                root_password: '{{ root_password }}'
+                authorized_ssh_keys: "{{ ssh_key }}"
+
+              cloud_init_nics:
+                - nic_name: "{{ nic1 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ ip_ctl }}"
+                  nic_netmask: "{{ netmask }}"
+                  nic_gateway: "{{ gateway }}"
+                  nic_on_boot: true
+
+                - nic_name: "{{ nic2 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ priv_ctl }}"
+                  nic_netmask: 255.255.255.0
+                  nic_on_boot: true
+          with_items:
+           - "{{ ctl_name }}"
+
+        - name: Add additiona nic.
+          # Add NIC to VM
+          ovirt_nics:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item }}"
+              state: present
+              vm: "{{ item }}"
+              name: nic2
+              interface: virtio
+              #mac_address: 00:1b:4a:16:01:56
+              profile: ovirtmgmt
+              network: ovirtmgmt
+          with_items:
+           - "{{ ctl_name }}"
+## End of creating Control node ##
+
+
+## Start creating Network node ##
+        - name: Create Network VM from {{ template }}
+          ovirt_vms:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item }}"
+              template: "{{ template }}"
+              cluster: "{{ cluster }}"
+              type: server
+              cpu_cores: 1
+              cpu_sockets: 1
+              memory: "{{ network_mem }}"
+              high_availability: true
+              operating_system: rhel_7x64
+              state: running
+
+              cloud_init:
+                host_name: "{{ item }}"
+                user_name: root
+                root_password: '{{ root_password }}'
+                authorized_ssh_keys: "{{ ssh_key }}"
+
+              cloud_init_nics:
+                - nic_name: "{{ nic1 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ ip_network }}"
+                  nic_netmask: "{{ netmask }}"
+                  nic_gateway: "{{ gateway }}"
+                  nic_on_boot: true
+
+                - nic_name: "{{ nic2 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ priv_network }}"
+                  nic_netmask: 255.255.255.0
+                  nic_on_boot: true
+          with_items:
+           - "{{ network_name }}"
+
+        - name: Add additiona nic.
+          # Add NIC to VM
+          ovirt_nics:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item }}"
+              state: present
+              vm: "{{ item }}"
+              name: nic2
+              interface: virtio
+              #mac_address: 00:1b:4a:16:01:56
+              profile: ovirtmgmt
+              network: ovirtmgmt
+          with_items:
+           - "{{ network_name }}"
+## End of creating Network node ##
+
+
+## Start creating compute node ##
+        - name: Create Compute VM from {{ template }}
+          ovirt_vms:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item.node }}"
+              template: "{{ template }}"
+              cluster: "{{ cluster }}"
+              type: server
+              cpu_cores: 2
+              cpu_sockets: 2
+              memory: "{{ compute_mem }}"
+              high_availability: true
+              operating_system: rhel_7x64
+              state: running
+
+              cloud_init:
+                host_name: "{{ item.node }}"
+                user_name: root
+                root_password: '{{ root_password }}'
+                authorized_ssh_keys: "{{ ssh_key }}"
+
+              cloud_init_nics:
+                - nic_name: "{{ nic1 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ item.ip }} "
+                  nic_netmask: "{{ netmask }}"
+                  nic_gateway: "{{ gateway }}"
+                  nic_on_boot: true
+
+                - nic_name: "{{ nic2 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ item.ip_priv }}"
+                  nic_netmask: 255.255.255.0
+                  nic_on_boot: true
+          with_items:
+           - { node: "{{ comp01_name }}", ip: "{{ ip_compute01 }}", ip_priv: "{{ priv_compute01 }}" }
+           - { node: "{{ comp02_name }}", ip: "{{ ip_compute02 }}", ip_priv: "{{ priv_compute02 }}" }
+
+        - name: Add additiona nic.
+          # Add NIC to VM
+          ovirt_nics:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item }}"
+              state: present
+              vm: "{{ item }}"
+              name: nic2
+              interface: virtio
+              #mac_address: 00:1b:4a:16:01:56
+              profile: ovirtmgmt
+              network: ovirtmgmt
+          with_items:
+           - compute01.rhlabs.org
+           - compute02.rhlabs.org
+## End of creating Compute node ##
+
+
+## Start creating Ceph node ##
+        - name: Create Ceph VM from {{ template }}
+          ovirt_vms:
+              auth: "{{ ovirt_auth }}"
+              name: "{{ item.node }}"
+              template: "{{ template }}"
+              cluster: "{{ cluster }}"
+              type: server
+              cpu_cores: 1
+              cpu_sockets: 1
+              memory: "{{ ceph_mem }}"
+              high_availability: true
+              operating_system: rhel_7x64
+              state: running
+
+              cloud_init:
+                host_name: "{{ item.node }}"
+                user_name: root
+                root_password: '{{ root_password }}'
+                authorized_ssh_keys: "{{ ssh_key }}"
+
+              cloud_init_nics:
+                - nic_name: "{{ nic1 }}"
+                  nic_boot_protocol: static
+                  nic_ip_address: "{{ item.ip }} "
+                  nic_netmask: "{{ netmask }}"
+                  nic_gateway: "{{ gateway }}"
+                  nic_on_boot: true
+
+          with_items:
+           - { node: "{{ ceph01_name }}", ip: "{{ ip_ceph01 }}" }
+           - { node: "{{ ceph02_name }}", ip: "{{ ip_ceph02 }}" }
+
+        - ovirt_disks:
+             auth: "{{ ovirt_auth }}"
+             state: attached
+             name: "{{ item }}"
+             vm_name: "{{ item }}"
+             size: 50GiB
+             format: cow
+             interface: virtio
+             storage_domain: Images
+          with_items:
+           - "{{ ceph01_name }}"
+           - "{{ ceph02_name }}"
+
+## End of creating Ceph node ##
+
+
+      always:
+        - name: Revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"
+
+#### Ovirt Module End #####
+
